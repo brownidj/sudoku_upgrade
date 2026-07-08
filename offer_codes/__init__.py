@@ -1,0 +1,1 @@
+"""Offer code assignment application."""
