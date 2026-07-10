@@ -10,7 +10,7 @@ class OfferCodeYamlError(Exception):
 
 
 class OfferCodeYamlRepository:
-    FIELD_NAMES = ("U3A_number", "email", "offer_number", "issued")
+    FIELD_NAMES = ("U3A_number", "email", "offer_number", "issued", "first_name", "last_name")
 
     def __init__(self, path: Path) -> None:
         self._path = path
@@ -63,6 +63,8 @@ class OfferCodeYamlRepository:
             email=record["email"],
             offer_number=record["offer_number"],
             issued=record["issued"],
+            first_name=record["first_name"],
+            last_name=record["last_name"],
         )
 
     def _render(self, records: list[OfferCodeRecord]) -> str:
@@ -71,6 +73,8 @@ class OfferCodeYamlRepository:
             lines.append(f'- U3A_number: "{self._quote(record.U3A_number)}"')
             lines.append(f'  email: "{self._quote(record.email)}"')
             lines.append(f'  offer_number: "{self._quote(record.offer_number)}"')
+            lines.append(f'  first_name: "{self._quote(record.first_name)}"')
+            lines.append(f'  last_name: "{self._quote(record.last_name)}"')
             lines.append(f'  issued: "{self._quote(record.issued)}"')
         return "\n".join(lines) + "\n"
 

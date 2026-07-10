@@ -2,7 +2,7 @@
 
 from offer_codes.application.clock import DateProvider
 from offer_codes.application.repositories import OfferCodeRepository
-from offer_codes.domain.errors import NoAvailableOfferCodeError
+from offer_codes.domain.errors import DuplicateU3ANumberError, NoAvailableOfferCodeError
 from offer_codes.domain.models import OfferCodeRecord
 from offer_codes.domain.rules import OfferCodeRules
 
@@ -13,26 +13,67 @@ class OfferCodeService:
         self._date_provider = date_provider
 
     def next_available(self) -> OfferCodeRecord:
-        records = self._repository.load_all()
-        for record in records:
+        for record in self.available_records():
             if OfferCodeRules.is_available(record):
                 return record
         raise NoAvailableOfferCodeError("No unissued offer codes are available.")
 
-    def can_save(self, U3A_number: str, email: str) -> bool:
-        return OfferCodeRules.can_issue(U3A_number, email)
-
-    def assign_current(self, offer_number: str, U3A_number: str, email: str) -> OfferCodeRecord:
+    def available_records(self) -> list[OfferCodeRecord]:
         records = self._repository.load_all()
+        return [record for record in records if OfferCodeRules.is_available(record)]
+
+    def can_save(self, U3A_number: str, first_name: str, last_name: str, email: str) -> bool:
+        return OfferCodeRules.can_issue(U3A_number, first_name, last_name, email)
+
+    def default_issued_date(self) -> str:
+        return self._date_provider.today_iso()
+
+    def normalized_email(self, email: str) -> str:
+        return OfferCodeRules.normalize_email(email)
+
+    def assign_current(
+        self,
+        offer_number: str,
+        U3A_number: str,
+        first_name: str,
+        last_name: str,
+        email: str,
+        issued: str | None = None,
+    ) -> OfferCodeRecord:
+        records = self._repository.load_all()
+        self.validate_assignment(offer_number, U3A_number)
         for index, record in enumerate(records):
             if record.offer_number == offer_number:
                 completed = OfferCodeRules.complete(
                     record=record,
                     U3A_number=U3A_number,
+                    first_name=first_name,
+                    last_name=last_name,
                     email=email,
-                    issued=self._date_provider.today_iso(),
+                    issued=issued or self.default_issued_date(),
                 )
                 records[index] = completed
                 self._repository.save_all(records)
                 return completed
         raise NoAvailableOfferCodeError(f"Offer code {offer_number} was not found.")
+
+    def validate_assignment(self, offer_number: str, U3A_number: str) -> None:
+        records = self._repository.load_all()
+        self._ensure_offer_code_exists(records, offer_number)
+        self._ensure_U3A_number_is_unique(records, offer_number, U3A_number)
+
+    def _ensure_offer_code_exists(self, records: list[OfferCodeRecord], offer_number: str) -> None:
+        if not any(record.offer_number == offer_number for record in records):
+            raise NoAvailableOfferCodeError(f"Offer code {offer_number} was not found.")
+
+    def _ensure_U3A_number_is_unique(
+        self, records: list[OfferCodeRecord], current_offer_number: str, U3A_number: str
+    ) -> None:
+        requested_U3A_number = U3A_number.strip()
+        for record in records:
+            if record.offer_number == current_offer_number:
+                continue
+            if record.U3A_number.strip() == requested_U3A_number and record.issued.strip():
+                raise DuplicateU3ANumberError(
+                    f"U3A number {requested_U3A_number} already has an issued offer code."
+                )

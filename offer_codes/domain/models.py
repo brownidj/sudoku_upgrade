@@ -9,6 +9,8 @@ class OfferCodeRecord:
     email: str
     offer_number: str
     issued: str
+    first_name: str = ""
+    last_name: str = ""
 
     @classmethod
     def blank(cls, offer_number: str) -> "OfferCodeRecord":
