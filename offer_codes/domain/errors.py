@@ -11,3 +11,7 @@ class NoAvailableOfferCodeError(OfferCodeError):
 
 class DuplicateU3ANumberError(OfferCodeError):
     """Raised when a U3A number already has an issued offer code."""
+
+
+class InvalidDeviceTypeError(OfferCodeError):
+    """Raised when an assignment has an unsupported device type."""

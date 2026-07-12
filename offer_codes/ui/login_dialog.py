@@ -14,6 +14,7 @@ class LoginDialog(tk.Toplevel):
         self._password = tk.StringVar()
         self._status = tk.StringVar()
         self.authenticated = False
+        self.authenticated_user = ""
         self.title("Login")
         self.resizable(False, False)
         self.transient(parent)
@@ -36,8 +37,10 @@ class LoginDialog(tk.Toplevel):
         user_entry.focus_set()
 
     def _login(self) -> None:
-        if self._auth_service.authenticate(self._user.get(), self._password.get()):
+        authenticated_user = self._auth_service.authenticated_user(self._user.get(), self._password.get())
+        if authenticated_user is not None:
             self.authenticated = True
+            self.authenticated_user = authenticated_user
             self.destroy()
             return
         self._status.set("Invalid user or password.")
@@ -45,4 +48,5 @@ class LoginDialog(tk.Toplevel):
 
     def _cancel(self) -> None:
         self.authenticated = False
+        self.authenticated_user = ""
         self.destroy()

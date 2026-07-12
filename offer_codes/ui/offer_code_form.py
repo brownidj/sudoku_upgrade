@@ -23,6 +23,7 @@ class OfferCodeForm(ttk.Frame):
         self._first_name = tk.StringVar()
         self._last_name = tk.StringVar()
         self._email = tk.StringVar()
+        self._device_type = tk.StringVar()
         self._issued = tk.StringVar()
         self._status = tk.StringVar()
         self._dry_run = tk.BooleanVar(value=True)
@@ -57,21 +58,29 @@ class OfferCodeForm(ttk.Frame):
         ttk.Entry(self, textvariable=self._U3A_number, width=34).grid(row=3, column=1, sticky="ew", pady=6)
         ttk.Label(self, text="Email").grid(row=4, column=0, sticky="w", pady=6)
         ttk.Entry(self, textvariable=self._email, width=34).grid(row=4, column=1, sticky="ew", pady=6)
-        ttk.Label(self, text="Issued").grid(row=5, column=0, sticky="w", pady=6)
+        ttk.Label(self, text="Device").grid(row=5, column=0, sticky="w", pady=6)
+        ttk.Combobox(
+            self,
+            textvariable=self._device_type,
+            values=self._controller.device_types(),
+            state="readonly",
+            width=32,
+        ).grid(row=5, column=1, sticky="ew", pady=6)
+        ttk.Label(self, text="Issued").grid(row=6, column=0, sticky="w", pady=6)
         issued_frame = ttk.Frame(self)
-        issued_frame.grid(row=5, column=1, sticky="ew", pady=6)
+        issued_frame.grid(row=6, column=1, sticky="ew", pady=6)
         issued_frame.columnconfigure(0, weight=1)
         ttk.Entry(issued_frame, textvariable=self._issued, state="readonly", width=34).grid(
             row=0, column=0, sticky="ew"
         )
         self._build_calendar_button(issued_frame).grid(row=0, column=1, padx=(6, 0))
         actions_frame = ttk.Frame(self)
-        actions_frame.grid(row=6, column=1, sticky="ew", pady=(14, 6))
+        actions_frame.grid(row=7, column=1, sticky="ew", pady=(14, 6))
         actions_frame.columnconfigure(0, weight=1)
         self._progress_bar = ttk.Progressbar(actions_frame, mode="indeterminate", length=160)
         self._save_button = ttk.Button(actions_frame, text="Save", command=self._save, state="disabled")
         self._save_button.grid(row=0, column=1, sticky="e")
-        ttk.Label(self, textvariable=self._status).grid(row=7, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        ttk.Label(self, textvariable=self._status).grid(row=8, column=0, columnspan=2, sticky="w", pady=(8, 0))
         self._refresh_mode_warning()
 
     def _build_mode_toggle(self) -> ttk.Frame:
@@ -92,6 +101,7 @@ class OfferCodeForm(ttk.Frame):
         self._first_name.trace_add("write", self._refresh_save_state)
         self._last_name.trace_add("write", self._refresh_save_state)
         self._email.trace_add("write", self._refresh_save_state)
+        self._device_type.trace_add("write", self._refresh_save_state)
         self._issued.trace_add("write", self._refresh_save_state)
 
     def load_next(self) -> None:
@@ -137,6 +147,7 @@ class OfferCodeForm(ttk.Frame):
         self._first_name.set(record.first_name)
         self._last_name.set(record.last_name)
         self._email.set(record.email)
+        self._device_type.set(record.device_type)
         self._issued.set(record.issued or self._controller.default_issued_date())
         self._sync_name_hints()
 
@@ -145,13 +156,18 @@ class OfferCodeForm(ttk.Frame):
         self._first_name.set("")
         self._last_name.set("")
         self._email.set("")
+        self._device_type.set("")
         self._issued.set("")
         self._sync_name_hints()
         self._set_save_enabled(False)
 
     def _refresh_save_state(self, *_args: object) -> None:
         enabled = self._controller.can_save(
-            self._U3A_number.get(), self._first_name.get(), self._last_name.get(), self._email.get()
+            self._U3A_number.get(),
+            self._first_name.get(),
+            self._last_name.get(),
+            self._email.get(),
+            self._device_type.get(),
         ) and bool(self._issued.get())
         self._set_save_enabled(enabled)
 
@@ -179,17 +195,29 @@ class OfferCodeForm(ttk.Frame):
         first_name = self._first_name.get()
         last_name = self._last_name.get()
         email = self._email.get()
+        device_type = self._device_type.get()
         issued = self._issued.get()
         dry_run = self._dry_run.get()
         worker = threading.Thread(
-            target=self._send_current_email, args=(U3A_number, first_name, last_name, email, issued, dry_run), daemon=True
+            target=self._send_current_email,
+            args=(U3A_number, first_name, last_name, email, device_type, issued, dry_run),
+            daemon=True,
         )
         worker.start()
 
     def _send_current_email(
-        self, U3A_number: str, first_name: str, last_name: str, email: str, issued: str, dry_run: bool
+        self,
+        U3A_number: str,
+        first_name: str,
+        last_name: str,
+        email: str,
+        device_type: str,
+        issued: str,
+        dry_run: bool,
     ) -> None:
-        self._save_queue.put(self._controller.save(U3A_number, first_name, last_name, email, issued, dry_run))
+        self._save_queue.put(
+            self._controller.save(U3A_number, first_name, last_name, email, device_type, issued, dry_run)
+        )
 
     def _set_save_enabled(self, enabled: bool) -> None:
         if self._save_button is not None:

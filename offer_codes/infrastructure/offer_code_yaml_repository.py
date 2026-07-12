@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from offer_codes.domain.models import OfferCodeRecord
+from offer_codes.domain.rules import OfferCodeRules
 
 
 class OfferCodeYamlError(Exception):
@@ -10,7 +11,8 @@ class OfferCodeYamlError(Exception):
 
 
 class OfferCodeYamlRepository:
-    FIELD_NAMES = ("U3A_number", "email", "offer_number", "issued", "first_name", "last_name")
+    FIELD_NAMES = ("U3A_number", "email", "offer_number", "issued", "first_name", "last_name", "device_type")
+    REQUIRED_FIELD_NAMES = ("U3A_number", "email", "offer_number", "issued", "first_name", "last_name")
 
     def __init__(self, path: Path) -> None:
         self._path = path
@@ -55,9 +57,11 @@ class OfferCodeYamlRepository:
         record[key] = self._unquote(value)
 
     def _to_record(self, record: dict[str, str]) -> OfferCodeRecord:
-        missing = [field_name for field_name in self.FIELD_NAMES if field_name not in record]
+        missing = [field_name for field_name in self.REQUIRED_FIELD_NAMES if field_name not in record]
         if missing:
             raise OfferCodeYamlError(f"Missing fields: {', '.join(missing)}.")
+        device_type = record.get("device_type", "")
+        self._validate_device_type(device_type)
         return OfferCodeRecord(
             U3A_number=record["U3A_number"],
             email=record["email"],
@@ -65,16 +69,19 @@ class OfferCodeYamlRepository:
             issued=record["issued"],
             first_name=record["first_name"],
             last_name=record["last_name"],
+            device_type=device_type,
         )
 
     def _render(self, records: list[OfferCodeRecord]) -> str:
         lines: list[str] = []
         for record in records:
+            self._validate_device_type(record.device_type)
             lines.append(f'- U3A_number: "{self._quote(record.U3A_number)}"')
             lines.append(f'  email: "{self._quote(record.email)}"')
             lines.append(f'  offer_number: "{self._quote(record.offer_number)}"')
             lines.append(f'  first_name: "{self._quote(record.first_name)}"')
             lines.append(f'  last_name: "{self._quote(record.last_name)}"')
+            lines.append(f'  device_type: "{self._quote(record.device_type)}"')
             lines.append(f'  issued: "{self._quote(record.issued)}"')
         return "\n".join(lines) + "\n"
 
@@ -86,3 +93,8 @@ class OfferCodeYamlRepository:
 
     def _quote(self, value: str) -> str:
         return value.replace("\\", "\\\\").replace('"', '\\"')
+
+    def _validate_device_type(self, device_type: str) -> None:
+        if device_type and not OfferCodeRules.is_valid_device_type(device_type):
+            allowed_device_types = " or ".join(OfferCodeRules.ALLOWED_DEVICE_TYPES)
+            raise OfferCodeYamlError(f"Device type must be blank, {allowed_device_types}.")

@@ -1,6 +1,9 @@
 .idea/
 .venv/
 .env
+data/offer-codes.yaml
+data/users.yaml
+docs/OfferCodeOneTimeUseCodes.csv
 __pycache__/
 *.py[cod]
 .pytest_cache/

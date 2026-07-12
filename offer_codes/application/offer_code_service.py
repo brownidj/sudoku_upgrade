@@ -2,7 +2,7 @@
 
 from offer_codes.application.clock import DateProvider
 from offer_codes.application.repositories import OfferCodeRepository
-from offer_codes.domain.errors import DuplicateU3ANumberError, NoAvailableOfferCodeError
+from offer_codes.domain.errors import DuplicateU3ANumberError, InvalidDeviceTypeError, NoAvailableOfferCodeError
 from offer_codes.domain.models import OfferCodeRecord
 from offer_codes.domain.rules import OfferCodeRules
 
@@ -22,14 +22,20 @@ class OfferCodeService:
         records = self._repository.load_all()
         return [record for record in records if OfferCodeRules.is_available(record)]
 
-    def can_save(self, U3A_number: str, first_name: str, last_name: str, email: str) -> bool:
-        return OfferCodeRules.can_issue(U3A_number, first_name, last_name, email)
+    def can_save(self, U3A_number: str, first_name: str, last_name: str, email: str, device_type: str) -> bool:
+        return OfferCodeRules.can_issue(U3A_number, first_name, last_name, email, device_type)
 
     def default_issued_date(self) -> str:
         return self._date_provider.today_iso()
 
     def normalized_email(self, email: str) -> str:
         return OfferCodeRules.normalize_email(email)
+
+    def device_types(self) -> tuple[str, ...]:
+        return OfferCodeRules.ALLOWED_DEVICE_TYPES
+
+    def validate_device_type(self, device_type: str) -> None:
+        self._ensure_device_type_is_valid(device_type)
 
     def assign_current(
         self,
@@ -38,10 +44,11 @@ class OfferCodeService:
         first_name: str,
         last_name: str,
         email: str,
+        device_type: str,
         issued: str | None = None,
     ) -> OfferCodeRecord:
         records = self._repository.load_all()
-        self.validate_assignment(offer_number, U3A_number)
+        self.validate_assignment(offer_number, U3A_number, device_type)
         for index, record in enumerate(records):
             if record.offer_number == offer_number:
                 completed = OfferCodeRules.complete(
@@ -50,6 +57,7 @@ class OfferCodeService:
                     first_name=first_name,
                     last_name=last_name,
                     email=email,
+                    device_type=device_type,
                     issued=issued or self.default_issued_date(),
                 )
                 records[index] = completed
@@ -57,9 +65,10 @@ class OfferCodeService:
                 return completed
         raise NoAvailableOfferCodeError(f"Offer code {offer_number} was not found.")
 
-    def validate_assignment(self, offer_number: str, U3A_number: str) -> None:
+    def validate_assignment(self, offer_number: str, U3A_number: str, device_type: str) -> None:
         records = self._repository.load_all()
         self._ensure_offer_code_exists(records, offer_number)
+        self.validate_device_type(device_type)
         self._ensure_U3A_number_is_unique(records, offer_number, U3A_number)
 
     def _ensure_offer_code_exists(self, records: list[OfferCodeRecord], offer_number: str) -> None:
@@ -77,3 +86,8 @@ class OfferCodeService:
                 raise DuplicateU3ANumberError(
                     f"U3A number {requested_U3A_number} already has an issued offer code."
                 )
+
+    def _ensure_device_type_is_valid(self, device_type: str) -> None:
+        if not OfferCodeRules.is_valid_device_type(device_type):
+            allowed_device_types = " or ".join(OfferCodeRules.ALLOWED_DEVICE_TYPES)
+            raise InvalidDeviceTypeError(f"Device type must be {allowed_device_types}.")

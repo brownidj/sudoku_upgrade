@@ -8,9 +8,9 @@ def test_user_yaml_repository_loads_users(tmp_path) -> None:
         "\n".join(
             [
                 '- user: "Teruko"',
-                '  password: "okuret"',
+                '  password: "teruko-sample"',
                 '- user: "Mihoko"',
-                '  password: "okohim"',
+                '  password: "mihoko-sample"',
             ]
         ),
         encoding="utf-8",
@@ -19,6 +19,6 @@ def test_user_yaml_repository_loads_users(tmp_path) -> None:
     users = UserYamlRepository(path).load_all()
 
     assert users == [
-        UserCredential("Teruko", "okuret"),
-        UserCredential("Mihoko", "okohim"),
+        UserCredential("Teruko", "teruko-sample"),
+        UserCredential("Mihoko", "mihoko-sample"),
     ]

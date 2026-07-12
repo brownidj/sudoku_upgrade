@@ -11,6 +11,7 @@ class OfferCodeRecord:
     issued: str
     first_name: str = ""
     last_name: str = ""
+    device_type: str = ""
 
     @classmethod
     def blank(cls, offer_number: str) -> "OfferCodeRecord":

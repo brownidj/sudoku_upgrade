@@ -59,7 +59,7 @@ def test_save_is_temporary_dry_run_and_advances_session() -> None:
     assert controller.load_next().offer_number == "FIRST"
     assert controller.remaining_count() == 2
 
-    outcome = controller.save("U3A-001", "Ada", "Lovelace", "PERSON@Example.COM", "2026-07-09", dry_run=True)
+    outcome = controller.save("U3A-001", "Ada", "Lovelace", "PERSON@Example.COM", "Android", "2026-07-09", dry_run=True)
 
     assert outcome.succeeded
     assert outcome.dry_run
@@ -87,7 +87,7 @@ def test_failed_email_does_not_advance_dry_run_session() -> None:
 
     assert controller.load_next().offer_number == "FIRST"
 
-    outcome = controller.save("U3A-001", "Ada", "Lovelace", "person@example.com", "2026-07-09", dry_run=True)
+    outcome = controller.save("U3A-001", "Ada", "Lovelace", "person@example.com", "Android", "2026-07-09", dry_run=True)
 
     assert not outcome.succeeded
     assert repository.save_calls == 0
@@ -104,14 +104,14 @@ def test_real_issue_sends_email_and_saves_record() -> None:
 
     assert controller.load_next().offer_number == "FIRST"
 
-    outcome = controller.save("U3A-001", "aDA", "LOVELACE", "PERSON@Example.COM", "2026-07-10", dry_run=False)
+    outcome = controller.save("U3A-001", "aDA", "LOVELACE", "PERSON@Example.COM", "iPhone", "2026-07-10", dry_run=False)
 
     assert outcome.succeeded
     assert not outcome.dry_run
     assert email_service.sent == [("person@example.com", "FIRST")]
     assert repository.save_calls == 1
     assert repository.records == [
-        OfferCodeRecord("U3A-001", "person@example.com", "FIRST", "2026-07-10", "Ada", "Lovelace")
+        OfferCodeRecord("U3A-001", "person@example.com", "FIRST", "2026-07-10", "Ada", "Lovelace", "iPhone")
     ]
 
 
@@ -128,9 +128,25 @@ def test_real_issue_duplicate_U3A_number_does_not_send_email() -> None:
 
     assert controller.load_next().offer_number == "FIRST"
 
-    outcome = controller.save("U3A-001", "Ada", "Lovelace", "person@example.com", "2026-07-10", dry_run=False)
+    outcome = controller.save("U3A-001", "Ada", "Lovelace", "person@example.com", "Android", "2026-07-10", dry_run=False)
 
     assert not outcome.succeeded
     assert outcome.error_title == "Duplicate U3A number"
+    assert email_service.sent == []
+    assert repository.save_calls == 0
+
+
+def test_invalid_device_type_does_not_send_email() -> None:
+    repository = MemoryRepository([OfferCodeRecord("", "", "FIRST", "")])
+    service = OfferCodeService(repository, FixedDateProvider())
+    email_service = FakeEmailService()
+    controller = OfferCodeController(service, email_service, StubEffects())
+
+    assert controller.load_next().offer_number == "FIRST"
+
+    outcome = controller.save("U3A-001", "Ada", "Lovelace", "person@example.com", "Windows", "2026-07-10", dry_run=True)
+
+    assert not outcome.succeeded
+    assert outcome.error_title == "Invalid device type"
     assert email_service.sent == []
     assert repository.save_calls == 0

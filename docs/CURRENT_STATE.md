@@ -127,7 +127,7 @@ rg --files "$ROOT_DIR" \
 Assessment date: 2026-07-10
 
 ### Overall status
-- The project is now a small Python/Tkinter offer-code assignment app backed by `data/offer-codes.yaml`.
+- The project is now a small Python/Tkinter offer-code assignment app backed by a local ignored `data/offer-codes.yaml`.
 - `main.py` is thin and only calls the app composition root.
 - The code is split into explicit architecture layers:
   - `offer_codes/domain`: record model, domain errors, and completion rules.
@@ -137,12 +137,14 @@ Assessment date: 2026-07-10
   - `offer_codes/app`: composition root.
 
 ### Current behavior
-- The app loads the first available record from `data/offer-codes.yaml`.
-- The app shows a simple modal login dialog at startup and authenticates users from `data/users.yaml`; user and password matching is case-insensitive.
+- The app loads the first available record from local `data/offer-codes.yaml`; `data/offer-codes.example.yaml` documents the expected shape without real codes.
+- The app shows a simple modal login dialog at startup and authenticates users from local `data/users.yaml`; user and password matching is case-insensitive. `data/users.example.yaml` documents the expected shape without real credentials.
+- Offer-code allocation is user-scoped from the shared file: David uses records 1-50, Mihoko uses records 51-100, and Teruko uses records 101-150.
 - The top of the app has dry-run/issue radio buttons. When dry run is selected, a 26pt bold red `Dry run` warning is shown; when issue mode is selected, a 26pt bold red `Offer codes will be issued!` warning is shown.
 - A record is considered available when `U3A_number`, `email`, and `issued` are blank.
 - The form displays `offer_number` as read-only.
 - The form has hinted `first_name` and `last_name` fields directly below `offer_number`; both fields are persisted to `data/offer-codes.yaml`.
+- The form has a device dropdown which only permits `Android` or `iPhone`; the selected value is persisted as `device_type`.
 - Before saving, first and last names are normalized to capitalized words and email addresses are normalized to lowercase.
 - The `Issued` field defaults to today's ISO date and has an icon-only button using a 27px render of `assets/icons/calendar-icon-symbol-sign-vector.jpg` for the built-in Tkinter calendar popup.
 - The save button is enabled only when `U3A_number`, `first_name`, `last_name`, `email`, and `Issued` are completed.
@@ -150,16 +152,17 @@ Assessment date: 2026-07-10
 - Dry-run mode is enabled by default: clicking Save sends the offer-code email, advances to the next offer code for the current app session, but does not write data to `data/offer-codes.yaml`.
 - When dry-run mode is disabled, clicking Save sends the offer-code email and then writes the issued record to `data/offer-codes.yaml`.
 - While email is being generated and sent, the form displays an inline progress bar beside Save and disables Save. SMTP sending runs on a background thread so the Tkinter UI can continue repainting.
-- Real saved records cannot issue more than one offer code to the same `U3A_number`; dry-run advancement intentionally ignores this uniqueness rule. In real issue mode, duplicate U3A numbers are blocked before email is sent.
+- Real saved records cannot issue more than one offer code to the same `U3A_number`; dry-run advancement intentionally ignores this uniqueness rule. In real issue mode, duplicate U3A numbers are checked against issued records across all user allocations before email is sent.
 - Local SMTP settings are loaded from an ignored `.env` file at startup. Safe placeholder values are documented in `.env.example`.
+- Local offer-code and login data are ignored by git. Start from the example YAML files, then populate the local `data/offer-codes.yaml` and `data/users.yaml` files outside version control.
 
 ### File-size constraint compliance
 - Prompt target: each file must be under 300 lines.
-- `scripts/check_file_sizes.sh` enforces the 300-line threshold and excludes source-data CSV files and Python bytecode caches.
+- `scripts/check_file_sizes.sh` enforces the 300-line threshold and excludes source-data CSV/YAML files, binary image assets, and Python bytecode caches.
 - Result: pass as of this assessment.
 
 ### Testing and refactor posture
-- Focused tests cover login authentication, user YAML parsing, application behavior, U3A-number uniqueness for saved records, YAML persistence, dry-run and real-issue controller paths, email message creation, SMTP config, and `.env` loading.
+- Focused tests cover login authentication, user YAML parsing, user-scoped offer-code allocation, application behavior, U3A-number uniqueness for saved records, YAML persistence, dry-run and real-issue controller paths, email message creation, SMTP config, and `.env` loading.
 - The Tkinter UI has not been manually exercised in this pass.
 - No database is used; the existing YAML file remains the source of truth.
 
@@ -171,7 +174,7 @@ Assessment date: 2026-07-10
 Run date: 2026-07-10
 
 1. `python3 -m pytest`
-- Result: pass (`20` tests passed).
+- Result: pass (`25` tests passed).
 
 2. `python3 -m compileall main.py offer_codes tests`
 - Result: pass.

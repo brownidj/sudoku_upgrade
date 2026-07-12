@@ -11,6 +11,7 @@ fi
 rg --files "$ROOT_DIR" \
   | rg -v "^${ROOT_DIR}/.git/" \
   | rg -v "^${ROOT_DIR}/docs/.*\\.csv$" \
+  | rg -v "^${ROOT_DIR}/data/.*\\.ya?ml$" \
   | rg -v "\\.(jpg|jpeg|png|gif|ico)$" \
   | rg -v "/__pycache__/" \
   | rg -v "\\.pyc$" \
