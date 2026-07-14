@@ -82,7 +82,9 @@ class OfferCodeController:
                 return self._send_android_closed_test_email(email, cancel_event)
             if self._is_cancelled(cancel_event):
                 return SaveOutcome(record=None)
-            return self._register_android_tester(U3A_number, first_name, last_name, email, issued, cancel_event)
+            return self._send_android_email_and_register_tester(
+                U3A_number, first_name, last_name, email, issued, cancel_event
+            )
         if self._current is None:
             return SaveOutcome(record=None, error_title="Save failed", error_message="No offer code is loaded.")
         if not dry_run:
@@ -164,6 +166,25 @@ class OfferCodeController:
         except InvalidDeviceTypeError as exc:
             return SaveOutcome(record=None, error_title="Invalid device type", error_message=str(exc))
         return SaveOutcome(record=record, dry_run=False, android_tester=True)
+
+    def _send_android_email_and_register_tester(
+        self,
+        U3A_number: str,
+        first_name: str,
+        last_name: str,
+        email: str,
+        issued: str,
+        cancel_event: threading.Event | None,
+    ) -> SaveOutcome:
+        try:
+            self._email_service.send_android_closed_test_email(self._service.normalized_email(email), cancel_event)
+            if self._is_cancelled(cancel_event):
+                return SaveOutcome(record=None)
+        except EmailCancelledError:
+            return SaveOutcome(record=None)
+        except EmailSendError as exc:
+            return SaveOutcome(record=None, error_title="Email failed", error_message=str(exc))
+        return self._register_android_tester(U3A_number, first_name, last_name, email, issued, cancel_event)
 
     def _send_android_closed_test_email(self, email: str, cancel_event: threading.Event | None) -> SaveOutcome:
         try:
