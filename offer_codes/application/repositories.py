@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from offer_codes.domain.models import OfferCodeRecord
+from offer_codes.domain.models import AndroidTesterRecord, OfferCodeRecord
 
 
 class OfferCodeRepository(Protocol):
@@ -10,4 +10,12 @@ class OfferCodeRepository(Protocol):
         ...
 
     def save_all(self, records: list[OfferCodeRecord]) -> None:
+        ...
+
+
+class AndroidTesterRepository(Protocol):
+    def load_all(self) -> list[AndroidTesterRecord]:
+        ...
+
+    def save_all(self, records: list[AndroidTesterRecord]) -> None:
         ...

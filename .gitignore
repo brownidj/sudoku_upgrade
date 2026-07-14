@@ -2,8 +2,9 @@
 .venv/
 .env
 data/offer-codes.yaml
+data/ios-offer-codes.yaml
+data/android-testers.yaml
 data/users.yaml
-docs/OfferCodeOneTimeUseCodes.csv
 __pycache__/
 *.py[cod]
 .pytest_cache/
